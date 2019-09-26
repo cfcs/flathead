@@ -1128,7 +1128,7 @@ let complete_sread (Input_buffer text_addr) parse_addr input interpreter instruc
   (* Spec: The text typed is reduced to lower case *)
   (* Note: it is not clear from reading the spec whether this applies just
   to versions 1-4, or all versions. Let's assume all. *)
-  let text = String.lowercase input in
+  let text = String.lowercase_ascii input in
   let story = interpreter.story in
   (* TODO: Could use some helper methods on input buffers here and in tokeniser.*)
   let maximum_letters = Story.read_byte story (Byte_address text_addr) in
