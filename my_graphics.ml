@@ -2,7 +2,7 @@ open Type;;
 
 Graphics.open_graph "";;
 Graphics.auto_synchronize false;;
-Graphics.set_font "Lucida Console";;
+Graphics.set_font "fixed";;
 
 let text_size text =
   let (w, h) = Graphics.text_size text in
