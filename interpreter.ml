@@ -1829,8 +1829,8 @@ let step_with_input interpreter key =
   match opcode with
   | VAR_246 -> complete_read_char interpreter instruction key
   | VAR_228 ->
-    if key_text = "\r" then handle_enter()
-    else if key_text = "\b" then handle_backspace()
+    if key_text = "\n" then handle_enter()
+    else if key_text = "\x7f" then handle_backspace()
     else if length >= interpreter.input_max then interpreter
     else { interpreter with input = interpreter.input ^ key_text }
   | _ -> failwith "not waiting for input"
