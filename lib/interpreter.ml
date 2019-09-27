@@ -839,6 +839,8 @@ In version 4:
 * Now the game can determine whether the save failed (0), succeeded (1)
   or we just restored (2). *)
 
+  failwith "Save not implemented"
+(* TODO for Mirage
   let compressed = Compression.compress interpreter.story in
   let release = Story.release_number interpreter.story in
   let serial = Story.serial_number interpreter.story in
@@ -849,6 +851,7 @@ In version 4:
   Iff.write_iff_file filename form;
   (* TODO: Handle failure *)
   save_succeeded
+*)
 
 (* Spec: 0OP:182 restore ?(label)
          0OP:182 restore -> (result)
@@ -866,6 +869,8 @@ In version 4:
   happens since otherwise control is already elsewhere. *)
 
 let handle_restore interpreter instruction =
+  failwith "Restore not implemented"
+(* TODO for Mirage
   (* In versions 1, 2 and 3 the restore branches on failure. In version 4 the
   restore stores a value on failure. Of course if the restore succeeds then
   the interpreter continues with the restored instruction pointer. *)
@@ -909,6 +914,7 @@ let handle_restore interpreter instruction =
   let save_interpreter = interpret_branch store_interpreter save_instruction restore_succeeded in
   save_interpreter
 (* end of handle_restore *)
+*)
 
 (* Spec: 0OP:183 restart
 Restart the game. (Any "Are you sure?" question must be asked by the game,
