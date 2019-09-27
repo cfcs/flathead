@@ -1,2 +1,5 @@
 true: bin_annot
 "lib": include
+"lib_telnet": include
+
+<lib_telnet/wire.{ml,mli}>: package(ppx_cstruct sexplib)
