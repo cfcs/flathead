@@ -25,6 +25,7 @@ setup.log
 FLATHEAD.SAV
 
 # mirage-specific
+Makefile
 .mirage.config
 *.hvt
 *.spt
