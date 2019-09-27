@@ -23,3 +23,18 @@ setup.log
 
 # savegame
 FLATHEAD.SAV
+
+# mirage-specific
+.mirage.config
+*.hvt
+*.spt
+*.virtio
+*.muen
+*.genode
+*.xen
+key_gen.ml
+main.ml
+*.opam
+myocamlbuild.ml
+static*.ml
+static*.mli
