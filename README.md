@@ -1,29 +1,11 @@
 # flathead
 
-I am learning OCaml by implementing some Z-machine tools, for fun!
+This is a fork of Eric Lippert's Z-machine interpreter written in OCaml.
 
-I am using OCamlPro for Windows version 4.02.  You can download it from 
+This branch (`mirage`) is a port of flathead to run as a MirageOS unikernel.
 
-https://www.ocamlpro.com/pub/ocpwin/ocpwin-builds/ocpwin64/20160113/
+There are also some other branches of interest in this repository:
 
-and use the installer:
-
-ocpwin64-20160113-4.02.1+ocp1-full-mingw64.exe
-
-An alternate site, which I have not yet tried, is
-
-http://protz.github.io/ocaml-installer/
-
-which links to installer
-
-http://gallium.inria.fr/~protzenk/caml-installer/ocaml-4.02.3-x86_64-mingw64-installer4-opam.exe
-
-If you try running this code with Unix / Mac / Cygwin / etc versions of OCaml,
-I am interested to know if you were successful.  
-
-I will be writing a series of blog articles about this project at
-
-http://ericlippert.com/category/zmachine
-
-
+- `update-working`: An update of Eric's working code to use ocamlbuild, should work on any OCaml system with the Graphics package available.
+- `tty`: A simplistic replacement of the Graphics code to use a terminal, should work on any UNIX-based OCaml system.
 
