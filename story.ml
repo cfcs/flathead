@@ -724,17 +724,16 @@ let decode_string_packed_address story (Packed_zstring packed) =
   | V7 -> Zstring (packed * 4 + (string_offset story))
   | V8 -> Zstring (packed * 8)
 
-let load filename =
-  let file = get_file filename in
+let load file =
   let len = String.length file in
   if len < header_size then
-    failwith (Printf.sprintf "%s is not a valid story file" filename)
+    failwith (Printf.sprintf "is not a valid story file")
   else
     let high = dereference_string (address_of_high_byte static_memory_base_offset) file in
     let low = dereference_string (address_of_low_byte static_memory_base_offset) file in
     let dynamic_length = high * 256 + low in
     if dynamic_length > len then
-      failwith (Printf.sprintf "%s is not a valid story file" filename)
+      failwith (Printf.sprintf "is not a valid story file")
     else 
       let dynamic = String.sub file 0 dynamic_length in
       let static = String.sub file dynamic_length (len - dynamic_length) in
