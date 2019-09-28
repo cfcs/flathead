@@ -9,3 +9,12 @@ There are also some other branches of interest in this repository:
 - [`update-working`](https://github.com/mato/flathead/tree/update-working): An update of Eric's working code to use ocamlbuild, should work on any OCaml system with the Graphics package available.
 - [`tty`](https://github.com/mato/flathead/tree/tty): A simplistic replacement of the Graphics code to use a terminal, should work on any UNIX-based OCaml system.
 
+
+## Building for the mirage `Unix` target
+
+```
+# maybe # opam install mirage-kv-unix mirage-bootvar-unix
+opam install -y --deps-only .
+mirage configure -t unix --kv_ro=direct
+make
+```
