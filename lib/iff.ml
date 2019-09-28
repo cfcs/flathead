@@ -83,7 +83,7 @@ let read_iff_file filename root_form =
       | Integer8 (Some n) -> n
       | Integer4 (Some n) -> n
       | Assign (_, f) -> form_to_integer f
-      | Lookup s -> failwith "TODO: Lookup not implemented"
+      | Lookup _s -> failwith "TODO: Lookup not implemented"
       | _ -> failwith "form does not have value" in
 
     let read_header id =
@@ -130,7 +130,7 @@ let read_iff_file filename root_form =
     let read_record forms =
       let (new_end_position, skip_byte) =
         match forms with
-        | (Header _) :: (Length _) :: tail ->
+        | (Header _) :: (Length _) :: _tail ->
           let (_, length) = peek_chunk offset in
           (offset + 8 + length, length mod 2 != 0)
         | _ -> (end_position, false) in
@@ -169,7 +169,7 @@ let read_iff_file filename root_form =
       | _ -> failwith "unexpected pattern in unsized list" in
 
     let read_sized_list size forms =
-      let (s, size_offset) = read_form offset size end_position context in
+      let (s, _size_offset) = read_form offset size end_position context in
       let n = form_to_integer s in
       match forms with
       | [form] ->
@@ -191,7 +191,7 @@ let read_iff_file filename root_form =
           let (header, length) = peek_chunk current_offset in
           let predicate form =
             match form with
-            | Record ((Header id) :: tail) -> header = id
+            | Record ((Header id) :: _tail) -> header = id
             | _ -> false in
           match first_match forms predicate with
           | None ->

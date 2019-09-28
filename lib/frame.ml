@@ -101,7 +101,7 @@ let make_frame_record frame =
 
 let make_frame_from_record frame_record =
   let (ret_addr, locals_list, eval_stack,
-      store, arg_count, locals_count) =
+      store, arg_count, _locals_count) =
     match frame_record with
     | Record [
       Integer24 (Some ret_addr);
