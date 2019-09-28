@@ -1,4 +1,3 @@
-open Utility
 open Type
 
 type t =

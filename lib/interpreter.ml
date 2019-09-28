@@ -1,6 +1,4 @@
 open Utility
-open Iff
-open Quetzal
 open Type
 
 type interpreter_state =
@@ -319,19 +317,19 @@ je can take between 2 and 4 operands. je with just 1 operand is not permitted.
 Note that je is one of the rare "2OP" instructions that can take 3 or 4
 operands. *)
 
-let handle_je2 a b interpreter =
+let handle_je2 a b _interpreter =
   if a = b then 1 else 0
 
-let handle_je3 a b c interpreter =
+let handle_je3 a b c _interpreter =
   if a = b || a = c then 1 else 0
 
-let handle_je4 a b c d interpreter =
+let handle_je4 a b c d _interpreter =
   if a = b || a = c || a = d then 1 else 0
 
 (* Spec: 2OP:2 jl a b ?(label)
   Jump if a < b  using a signed 16-bit comparison. *)
 
-let handle_jl a b interpreter =
+let handle_jl a b _interpreter =
   let a = signed_word a in
   let b = signed_word b in
   if a < b then 1 else 0
@@ -339,7 +337,7 @@ let handle_jl a b interpreter =
 (* Spec: 2OP:3 3 jg a b ?(label)
   Jump if a > b using a signed 16-bit comparison. *)
 
-let handle_jg a b interpreter =
+let handle_jg a b _interpreter =
   let a = signed_word a in
   let b = signed_word b in
   if a > b then 1 else 0
@@ -394,19 +392,19 @@ let handle_jin obj1 obj2 interpreter =
 (* Spec: 2OP:7 test bitmap flags ?(label)
   Jump if all of the flags in bitmap are set (i.e. if bitmap & flags == flags) *)
 
-let handle_test bitmap flags interpreter =
+let handle_test bitmap flags _interpreter =
   if (bitmap land flags) = flags then 1 else 0
 
 (* Spec: 2OP:8 8 or a b -> (result)
   Bitwise OR. *)
 
-let handle_or a b interpreter =
+let handle_or a b _interpreter =
   a lor b
 
 (* Spec: 2OP:9 and a b -> (result)
 Bitwise AND. *)
 
-let handle_and a b interpreter =
+let handle_and a b _interpreter =
   a land b
 
 (* Spec: 2OP:10 test_attr object attribute ?(label)
@@ -1499,10 +1497,10 @@ let handle_scan_table4 x table len form interpreter =
     reads this as "n entries unsorted". This is very convenient if the table
     is being altered in play: if, for instance, the player is naming things. *)
 
-let handle_tokenise2 text parse interpreter =
+let handle_tokenise2 _text _parse _interpreter =
   failwith "TODO: tokenise not implemented"
 
-let handle_tokenise4 text parse dictionary flag interpreter =
+let handle_tokenise4 _text _parse _dictionary _flag _interpreter =
   failwith "TODO: tokenise text parse dictionary flag not implemented"
 
 (* Spec: VAR:252 encode_text zsciitext length from codedtext
@@ -1510,7 +1508,7 @@ let handle_tokenise4 text parse dictionary flag interpreter =
   as if it were an entry in the dictionary. The text begins at from in the
   zscii-text buffer and is length characters long.  *)
 
-let handle_encode_text zsciitext length from codedtext =
+let handle_encode_text _zsciitext _length _from _codedtext =
   failwith "TODO encode_text not implemented"
 
 (* Spec: VAR:253 copy_table first second size
@@ -1522,7 +1520,7 @@ let handle_encode_text zsciitext length from codedtext =
     backwards so as to avoid corrupting first in the copying process.
   * If size is negative, the interpreter must copy forwards even if this
     corrupts first. *)
-let handle_copy_table first second size interpreter =
+let handle_copy_table _first _second _size _interpreter =
   failwith "TODO copy_table not implemented"
 
 (* Spec: VAR:254 print_table zscii-text width height skip
@@ -1533,13 +1531,13 @@ value is given, then that many characters of text are skipped over in
 between each line and the next. (So one could make this display, for
 instance, a 2 by 3 window onto a giant 40 by 40 character graphics map.) *)
 
-let handle_print_table4 text width height skip interpreter =
+let handle_print_table4 _text _width _height _skip _interpreter =
   failwith "TODO print_table not implemented"
 
-let handle_print_table3 text width height interpreter =
+let handle_print_table3 _text _width _height _interpreter =
   failwith "TODO print_table not implemented"
 
-let handle_print_table2 text width interpreter =
+let handle_print_table2 _text _width _interpreter =
   failwith "TODO print_table not implemented"
 
 (* Spec: VAR:255 check_arg_count argument-number
@@ -1549,7 +1547,7 @@ let handle_print_table2 text width interpreter =
   routine(1) and routine(1,0), which would otherwise be impossible to
   tell apart.) *)
 
-let handle_check_arg_count number interpreter =
+let handle_check_arg_count _number _interpreter =
   failwith "TODO check_arg_count not implemented"
 
 (* Spec: EXT:0 save table bytes name -> (result)
@@ -1568,10 +1566,10 @@ let handle_check_arg_count number interpreter =
   a matter for the interpreter - this might be globally user-configurable.
   Infocom's interpreters do prompt for filenames, many modern ones do not.  *)
 
-let handle_save3 table bytes name interpreter =
+let handle_save3 _table _bytes _name _interpreter =
     failwith "TODO: save table bytes name not yet implemented "
 
-let handle_save4 table bytes name interpreter prompt =
+let handle_save4 _table _bytes _name _interpreter _prompt =
     failwith "TODO: save table bytes name not yet implemented "
 
 (* Spec:  EXT:1 restore table bytes name -> (result)
@@ -1579,10 +1577,10 @@ let handle_save4 table bytes name interpreter prompt =
 From Version 5 it can have optional parameters as save does, and returns
 the number of bytes loaded if so. *)
 
-let handle_restore3 table bytes name interpreter =
+let handle_restore3 _table _bytes _name _interpreter =
     failwith "TODO: restore table bytes name not yet implemented "
 
-let handle_restore4 table bytes name interpreter prompt =
+let handle_restore4 _table _bytes _name _interpreter _prompt =
     failwith "TODO: restore table bytes name not yet implemented "
 
 (* Spec: EXT:2 log_shift number places -> (result)
@@ -1590,8 +1588,8 @@ let handle_restore4 table bytes name interpreter prompt =
     shifting left (i.e. increasing) if places is positive, right if negative.
     In a right shift, the sign is zeroed instead of being shifted on.
     (See also art_shift.) *)
-    
-let handle_log_shift number places interpreter =
+
+let handle_log_shift number places _interpreter =
   let places = signed_word places in
   if places < 0 then number lsr ( - places)
   else if places > 0 then number lsl places
@@ -1603,19 +1601,19 @@ left (i.e. increasing) if places is positive, right if negative. In a
 right shift, the sign bit is preserved as well as being
 shifted on down. (The alternative behaviour is log_shift.) *)
 
-let handle_art_shift number places interpreter =
+let handle_art_shift number places _interpreter =
   let number = signed_word number in
   let places = signed_word places in
   if places < 0 then number asr ( - places)
   else if places > 0 then number lsl places
-  else number 
+  else number
 
 (* Spec: EXT:4 set_font font -> (result)
   If the requested font is available, then it is chosen for the current
   window, and the store value is the font ID of the previous font (which is
   always positive). If the font is unavailable, nothing will happen and the
   store value is 0. *)
-let handle_set_font font interpreter =
+let handle_set_font _font interpreter =
   (* TODO: set_font not yet implemented; just make it a no-op *)
   (0, interpreter)
 
@@ -1626,7 +1624,7 @@ let handle_set_font font interpreter =
     the current window.
   * It is illegal to call this with an invalid picture number. *)
 
-let handle_draw_picture number y x interpreter =
+let handle_draw_picture _number _y _x _interpreter =
   failwith "TODO: draw_picture not yet implemented"
 
 (* Spec EXT:9 save_undo -> (result)
@@ -1635,7 +1633,7 @@ saves the game into a cache of memory held by the interpreter. If the
 interpreter is unable to provide this feature, it must return -1: otherwise
 it returns the save return value *)
 
-let handle_save_undo interpreter =
+let handle_save_undo _interpreter =
   (* TODO: save_undo NYI, so just return -1 *)
   -1
 
@@ -1743,8 +1741,8 @@ let step_instruction interpreter =
   | (VAR_243, [number; table; width]) -> effect (handle_output_stream3 number table width)
   | (VAR_244, [number]) -> effect (handle_input_stream number)
   | (VAR_245, args) -> effect (handle_sound_effect args)
-  | (VAR_246, [dummy]) -> handle_read_char0 interpreter instruction
-  | (VAR_246, [dummy; time; routine]) -> handle_read_char2 time routine interpreter instruction
+  | (VAR_246, [_dummy]) -> handle_read_char0 interpreter instruction
+  | (VAR_246, [_dummy; time; routine]) -> handle_read_char2 time routine interpreter instruction
   | (VAR_247, [x; table; len]) -> value (handle_scan_table3 x table len)
   | (VAR_247, [x; table; len; form]) -> value (handle_scan_table4 x table len form)
   | (VAR_248, [x]) -> value (handle_not x)

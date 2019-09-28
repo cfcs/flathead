@@ -1,5 +1,4 @@
 open Type
-open Utility
 
 let maximum_local = 15
 

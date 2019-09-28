@@ -25,7 +25,7 @@ let read_byte story address =
   else
     let static_addr = dec_byte_addr_by address dynamic_size in
     dereference_string static_addr story.static_memory
-      
+
 let read_word story address =
   let high = read_byte story (address_of_high_byte address) in
   let low = read_byte story (address_of_low_byte address) in
