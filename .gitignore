@@ -39,3 +39,5 @@ main.ml
 myocamlbuild.ml
 static*.ml
 static*.mli
+
+/flathead
