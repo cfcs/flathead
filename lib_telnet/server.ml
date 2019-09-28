@@ -184,7 +184,7 @@ let init () =
     `WILL, Binary_Transmission ;
     (* `DO, Remote_Controlled_Trans_and_Echo ; *)
     (* `DO, Telnet_Suppress_Local_Echo ; *)
-    `WILL, Echo ;
+    (*`WILL, Echo ;*)
     (* `DO, Linemode ; *)
     (* `DO_NOT, Echo ; *)
     (*    `DO, Suppress_Go_Ahead ; *)
