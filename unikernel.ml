@@ -179,18 +179,41 @@ end
               | `Resize (_w, _h) ->
                Lwt.return input_prefix (* TODO *)
               | `Data bytes ->
-                let next = input_prefix ^ Cstruct.to_string bytes in
-                Logs.warn (fun m -> m "got data %S" next);
-                (* todo need to handle \r here *)
-                begin match String.split_on_char '\n' next with
-                  | [] | [ _ ] -> Lwt.return next
-                  | completed::tl ->
-                    let completed = String.trim completed ^ "\r" in
-                    Lwt_mvar.put input_mvar
-                      (Array.init (String.length completed)
-                         (String.get completed) |> Array.to_list)
-                    >|= fun () -> (String.concat "\n" tl)
-                end
+                let completed, next =
+                  String.to_seq (input_prefix ^ Cstruct.to_string bytes)
+                  |> Seq.fold_left (fun (has_cmd, cmd, was_newline,acc) ch ->
+                      match ch , has_cmd, was_newline with
+                      | '\000', _ , _ ->
+                        (* some telnet modes emit CR NUL for linebreaks*)
+                        has_cmd, cmd, false, acc
+                      | ('\r'|'\n'), false, false ->
+                        (* found newline ending cmd, not adding to acc*)
+                        true, cmd, true, acc
+                      | ('\r'|'\n'), true, false ->
+                        (* already have cmd; found newline in acc *)
+                        true, cmd, true, '\r'::acc
+
+                      | ('\r'|'\n'), true, true -> (* collapsing newlines *)
+                        has_cmd, cmd, true, acc
+                      | ch, false, true ->
+                        true, cmd, false, ch::acc
+                      | ch, true, _ ->
+                        (* adding to tl *)
+                        true, cmd, false, ch::acc
+                      | ch, false, false ->
+                        (*addding to cmd *)
+                        false, ch::cmd, false, acc
+                    ) (false, [], false,[])
+                  |> function (_, cmd, _, next) ->
+                    cmd,
+                    next |> List.rev |> List.to_seq |> String.of_seq in
+                let completed = (List.rev completed |> List.to_seq
+                                 |> String.of_seq |> String.trim)
+                                ^ "\r" (* expected by z-machine*) in
+                Lwt_mvar.put input_mvar
+                  (Array.init (String.length completed)
+                     (String.get completed) |> Array.to_list)
+                >|= fun () -> next
             ) (Lwt.return input_prefix) events
           >>= fun input_prefix -> loop telnet input_prefix
       in loop orig_telnet ""

@@ -184,15 +184,30 @@ let init () =
     `WILL, Binary_Transmission ;
     (* `DO, Remote_Controlled_Trans_and_Echo ; *)
     (* `DO, Telnet_Suppress_Local_Echo ; *)
-    (*`WILL, Echo ;*)
-    (* `DO, Linemode ; *)
+    `WILL_NOT, Echo ;
+    `DO, Linemode ;
     (* `DO_NOT, Echo ; *)
     (*    `DO, Suppress_Go_Ahead ; *)
     (*    `WILL, Suppress_Go_Ahead ; *)
   ] in
   let client_options = List.map (fun (_, o) -> (`Requested, o)) server_config in
-  ({ machina = Data ; server_config ; client_options },
-   Cstruct.concat (List.map (fun (c, o) -> emit_option c o) server_config))
+  let state, init =
+    ({ machina = Data ; server_config ; client_options },
+     Cstruct.concat (List.map (fun (c, o) -> emit_option c o) server_config))
+  in
+  let linemode = Cstruct.of_string
+      (* https://tools.ietf.org/html/rfc1184
+       IAC   DO   LINEMODE
+       255   253    34
+       IAC  SB   LINEMODE MODE mask IAC SE
+       255  250      34    1    1   255 240
+       mask (which things to turn on):
+         EDIT |1
+         TRAPSIG | 2
+         LIT_ECHO (off) | 16
+    *)
+      "\255\253\34\255\250\034\001\003\255\240" in
+  state, Cstruct.concat [init; linemode]
 
 let encode cs =
   let l = Cstruct.len cs in
