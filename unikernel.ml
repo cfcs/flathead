@@ -37,9 +37,9 @@ module Main
     let create () =
       let queue = M.empty |> M.add 0 "Welcome to multiplayer Z-Machine" in
       let cond = Lwt_condition.create () in
-      { queue; cond }
+      { queue; cond ; }
 
-    let scrollback_len = 500
+    let scrollback_len = 80
 
     let subscribe t f =
       let rec loop (seen:M.key) =
@@ -51,6 +51,7 @@ module Main
                 Logs.warn (fun m -> m "should send idx %d:%S" idx to_send);
                 Some to_send) else
                 (Logs.warn (fun m -> m "skip");None)) in
+
         (* Spawn async thread to not have to resolve
            Lwt promises before calling {!wait} again.
            This should make {loop} atomic, ensuring we do not
@@ -81,9 +82,9 @@ module Main
              elements: *)
           let threshold =
             min (current_top - this_batch) (current_top - scrollback_len) in
-          t.queue <- M.filter (fun key _v -> key < threshold) t.queue
+          t.queue <- M.filter (fun key _v -> key > threshold) t.queue
       end ;
-      Lwt_condition.signal t.cond ()
+      Lwt_condition.broadcast t.cond ()
 
 end
 
@@ -92,7 +93,6 @@ end
     type connection
     val attach_single : S.TCPV4.flow -> Server.state -> connection
     val attach_multi : S.TCPV4.flow -> Server.state -> unit Lwt.t
-    val detach : S.TCPV4.flow -> unit Lwt.t
     val is_connected : unit -> bool
     val broadcast : string -> unit Lwt.t
     val write_string : connection -> string -> unit Lwt.t
@@ -149,6 +149,16 @@ end
       all := M.remove flow !all ;
       Logs.warn (fun m -> m"detaching.");
       log_closing flow ;
+      (* todo what the fuck
+         Fatal error: exception Unix.Unix_error(Unix.EBADF, "check_descriptor", "")
+         Raised at file "src/unix/lwt_unix.cppo.ml", line 353, characters 4-64
+         Called from file "src/unix/lwt_unix.cppo.ml", line 1639, characters 2-21
+         Called from file "src/stack-unix/tcpv4_socket.ml", line 40, characters 8-31
+         Called from file "unikernel.ml", line 9, characters 24-40
+         Called from file "unikernel.ml", line 152, characters 6-22
+         Called from file "unikernel.ml", line 212, characters 15-469
+         Called from file "src/core/lwt.ml", line 2463, characters 16-20
+      *)
       try S.TCPV4.close flow with _ -> Lwt.return_unit
 
     let attach_input_listener flow orig_telnet input_mvar () =
@@ -171,6 +181,7 @@ end
               | `Data bytes ->
                 let next = input_prefix ^ Cstruct.to_string bytes in
                 Logs.warn (fun m -> m "got data %S" next);
+                (* todo need to handle \r here *)
                 begin match String.split_on_char '\n' next with
                   | [] | [ _ ] -> Lwt.return next
                   | completed::tl ->
@@ -353,20 +364,26 @@ end
     Logs.info (fun m -> m "Listening on [%a:%d]"
                   Fmt.(list Ipaddr.V4.pp) (S.(IPV4.get_ip @@ ipv4 s)) port);
     S.listen_tcpv4 s ~port (fun flow ->
-        let telnet, out = Server.init () in
         log_new flow ;
-      S.TCPV4.write flow out >>= function
+        let telnet, out = Server.init () in
+        (KV.get kv (Mirage_kv.Key.v "MOTD.txt") >|= Rresult.R.get_ok) >>= fun motd ->
+        let out_motd = Server.encode (Cstruct.of_string motd) in
+        S.TCPV4.writev flow [out; out_motd] >>= function
         | Error e ->
-            log_write_err flow e; S.TCPV4.close flow
+          log_write_err flow e; S.TCPV4.close flow
         | Ok () ->
           if !multiplayer
           then begin
             if not @@ Player.is_connected () then
               Lwt.async (fun () ->
                   session_start kv (Player.multi_connection)) ;
-            multiplayer_attach flow telnet
+            broadcast
+              (Fmt.strf
+                 "You \x1b[33mfeel\x1b[0m a disturbance\x1b[0m in the force. \
+                  It feels like \x1b[33m%a\x1b[0m\r\n"
+                 Fmt.(pair ~sep:(unit":") Ipaddr.V4.pp int) (S.TCPV4.dst flow))
+            >>= fun () -> multiplayer_attach flow telnet
           end else session_start kv (Player.attach_single flow telnet)
-    );
-
+      );
     S.listen s
 end
