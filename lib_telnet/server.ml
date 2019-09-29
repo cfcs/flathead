@@ -13,16 +13,16 @@ type status =
   | Command
   | Option of cmd
   | Suboption
-  | EatSub of int * telnet_option * int list
-  | SubDone
+  | EatSub of telnet_option * int list
+  | EatSubIAC of telnet_option * int list
 
 let status_to_string = function
   | Data -> "data"
   | Command -> "cmd"
   | Option cmd -> "option " ^ cmd_to_string cmd
   | Suboption -> "sub"
-  | EatSub (n, _, col) -> Printf.sprintf "eatsub %d left, %d collected" n (List.length col)
-  | SubDone -> "sub done"
+  | EatSub (_, col) -> Printf.sprintf "eatsub %d collected" (List.length col)
+  | EatSubIAC _ -> "(IAC inside SB)"
 
 type option_state = [
   | `Requested (* we requested *)
@@ -89,8 +89,10 @@ let handle_option state cmd what =
   { state with machina = Data ; client_options }, out
 
 let handle_sub _state = function
-  | Negotiate_About_Window_Size -> EatSub (4, Negotiate_About_Window_Size, [])
-  | _ -> Data
+  | Negotiate_About_Window_Size -> EatSub (Negotiate_About_Window_Size, [])
+  | kind ->
+    Logs.debug (fun m -> m "telnet: unknown suboption, eating until IAC SE.");
+    EatSub (kind, [])
 
 let of_list ints =
   let l = List.length ints in
@@ -108,7 +110,10 @@ let handle_subcommand _state cs = function
     and (height : int) = Cstruct.BE.get_uint16 cs 2
     in
     [ `Resize (width, height) ]
-  | _ -> []
+  | _ ->
+    Logs.warn (fun m -> m "telnet got subcommand, didn't know what to do: %a"
+                  Cstruct.hexdump_pp cs);
+    []
 
 let handle_command state =
   let status machina = { state with machina } in
@@ -130,20 +135,30 @@ let handle_main state data =
   | Data, 0xFF -> { state with machina = Command }, []
   | Data, c -> state, [`Data c]
   | Command, cmd -> (match int_to_telnet_command cmd with
-      | None -> Printf.printf "unknown command %x\n%!" data ; { state with machina = Data }, []
+      | None -> Printf.printf "unknown command %x\n%!" data ;
+        { state with machina = Data }, []
       | Some x -> handle_command state x)
   | Option cmd, data -> (match int_to_telnet_option data with
-      | None -> Printf.printf "unknown option %x\n%!" data ; { state with machina = Data }, []
+      | None -> Printf.printf "unknown option %x\n%!" data ;
+        { state with machina = Data }, []
       | Some x -> handle_option state cmd x)
+  | EatSubIAC (kind, xs), 0xFF -> (* IAC IAC -> escape 0xFF *)
+    { state with machina = EatSub (kind, 0xFF::xs) }, []
+  | EatSubIAC (kind, xs), 0xF0 -> (* IAC SE -> end sub parsing *)
+    let out = handle_subcommand state (of_list (List.rev (xs))) kind in
+    { state with machina = Data }, out
+  | EatSubIAC (_kind, _xs), x ->
+    Logs.err (fun m -> m "(telnet: IAC ? inside SB, reverting to Data)") ;
+    { state with machina = Data }, [`Data x]
   | Suboption, x -> (match int_to_telnet_option x with
-      | None -> Printf.printf "unknown suboption %x\n%!" data ; { state with machina = Data }, []
-      | Some x -> let machina = handle_sub state x in { state with machina }, [])
-  | EatSub (1, opt, xs), x ->
-    let out = handle_subcommand state (of_list (List.rev (x::xs))) opt in
-    { state with machina = SubDone }, out
-  | EatSub (x, opt, xs), c -> { state with machina = EatSub (pred x, opt, c :: xs) }, []
-  | SubDone, 0xFF -> { state with machina = Command }, []
-  | SubDone, x -> { state with machina = Data }, [`Data x]
+      | None -> Printf.printf "unknown suboption %x\n%!" data ;
+        { state with machina = Data }, []
+      | Some x -> let machina = handle_sub state x in
+        { state with machina }, [])
+  | EatSub (opt, xs), 0xFF ->
+    { state with machina = EatSubIAC (opt, xs) }, []
+  | EatSub (opt, xs), c ->
+    { state with machina = EatSub (opt, c :: xs) }, []
 
 let ev_s = function
   | `Data c -> Printf.printf "data %d:" (Cstruct.len c) ; Cstruct.hexdump c
@@ -152,6 +167,7 @@ let ev_s = function
 let handle state buf =
   (* Printf.printf "state in %s" (state_to_string state) ; *)
   let l = Cstruct.len buf in
+  Logs.debug (fun m -> m "telnet handling %a" Cstruct.hexdump_pp buf);
   let rec go state idx acc =
     if idx >= l then
       state, List.flatten (List.rev acc)
@@ -199,14 +215,16 @@ let init () =
       (* https://tools.ietf.org/html/rfc1184
        IAC   DO   LINEMODE
        255   253    34
+       ff    fd     22
        IAC  SB   LINEMODE MODE mask IAC SE
        255  250      34    1    1   255 240
+       ff   fa       22   01   01   ff   f0
        mask (which things to turn on):
          EDIT |1
          TRAPSIG | 2
          LIT_ECHO (off) | 16
     *)
-      "\255\253\034\255\250\034\001\003\255\240" in
+      "\255\253\034\255\250\034\001\001\255\240" in
   state, Cstruct.concat [init; linemode]
 
 let encode cs =

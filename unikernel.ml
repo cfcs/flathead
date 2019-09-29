@@ -48,7 +48,6 @@ module Main
           M.to_seq_from seen t.queue
           |> Seq.filter_map (fun (idx,to_send) ->
               if idx > seen then (
-                Logs.warn (fun m -> m "should send idx %d:%S" idx to_send);
                 Some to_send) else
                 (Logs.warn (fun m -> m "skip");None)) in
 
@@ -56,15 +55,12 @@ module Main
            Lwt promises before calling {!wait} again.
            This should make {loop} atomic, ensuring we do not
            miss out on signals. *)
-        Logs.warn (fun m -> m "subscribe: spawning async");
         Lwt.async (f to_send);
         Lwt_condition.wait t.cond >>= fun () ->
-        Logs.warn (fun m -> m "COND.");
         loop seen
       in loop (fst (M.min_binding t.queue))
 
     let append_lines t (string_lst:string list) =
-      (*Logs.warn (fun m -> m "append-lines %s" __LOC__);*)
       let current_top = try fst (M.max_binding t.queue) with Not_found -> 0 in
       let (next_top:int), (lst:(M.key * string) list) =
         List.fold_left (fun (idx,acc) s ->
@@ -139,7 +135,7 @@ end
         S.TCPV4.close flow >|= fun () -> Error e
 
     let broadcast cs =
-      Logs.warn (fun m -> m "broadcasting %s" cs);
+      Logs.debug (fun m -> m "broadcasting %s" (String.trim cs));
       Screen_queue.append_lines global_screen [cs] ;
       Lwt.return_unit
 
@@ -164,21 +160,20 @@ end
     let attach_input_listener flow orig_telnet input_mvar () =
       Logs.warn (fun m -> m "input listener attached.");
       let rec loop telnet input_prefix =
-        Logs.warn (fun m -> m "input listener looping.");
         S.TCPV4.read flow >>= function
         | Ok `Eof -> Lwt.catch (fun () -> detach flow) (fun _ -> Lwt.return())
         | Error _ -> Lwt.catch (fun () -> detach flow) (fun _ -> Lwt.return())
         | Ok (`Data b) ->
-          Logs.warn (fun m -> m "input listener got data");
           let telnet, events, out = Server.handle telnet b in
-          Logs.warn (fun m -> m "handled telnet");
-          unicast flow out >>= fun _ -> (* todo local echo *)
+          unicast flow out >>= fun _ -> (* todo handle errors *)
           List.fold_left (fun input_prefix event ->
               input_prefix >>= fun input_prefix ->
               match event with
               | `Resize (_w, _h) ->
                Lwt.return input_prefix (* TODO *)
               | `Data bytes ->
+                Logs.debug (fun m -> m "raw from telnet: %a"
+                               Cstruct.hexdump_pp bytes);
                 let completed, next =
                   String.to_seq (input_prefix ^ Cstruct.to_string bytes)
                   |> Seq.fold_left (fun (has_cmd, cmd, was_newline,acc) ch ->
@@ -210,6 +205,7 @@ end
                 let completed = (List.rev completed |> List.to_seq
                                  |> String.of_seq |> String.trim)
                                 ^ "\r" (* expected by z-machine*) in
+                Logs.debug (fun m -> m "input: %S" completed);
                 Lwt_mvar.put input_mvar
                   (Array.init (String.length completed)
                      (String.get completed) |> Array.to_list)
@@ -219,7 +215,6 @@ end
       in loop orig_telnet ""
 
     let write_string conn s =
-      (* Logs.info (fun f -> f "Output: %S" s); *)
       match conn with
       | Multi -> broadcast s
       | Single { output ; _  } ->
@@ -229,13 +224,10 @@ end
     let attach_output_thread flow output () =
       Screen_queue.subscribe output
         (fun seq () ->
-           Logs.warn (fun m -> m "subscribing");
            let rec loop = function
              | Seq.Nil ->
-               Logs.warn (fun m -> m "done reading queue.");
                Lwt.return_unit
              | Seq.Cons (s, next) ->
-               Logs.warn (fun m -> m "about to send %S" s);
                let cs =
                  (* well technically speaking the server should probably require
                     a telnet client state in order to know how to encode this, but
@@ -343,8 +335,6 @@ end
               Player.read_input flow >>= begin function
                 | None -> Lwt.return None
                 | Some input ->
-                    (* Logs.info (fun f -> f
-                      "Input: %a" Fmt.(list ~sep:(unit ",") char) input); *)
                     Lwt.return (Some (interpreter, input))
               end
             | ch :: tl ->

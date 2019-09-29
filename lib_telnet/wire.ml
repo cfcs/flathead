@@ -56,7 +56,7 @@ type telnet_option =
   | Negotiate_About_Window_Size
   | Terminal_Speed
   | Remote_Flow_Control
-  | Linemode
+  | Linemode (* 0x22, see https://tools.ietf.org/html/rfc1184 *)
   | X_Display_Location
   | Environment_Option
   | Authentication_Option
