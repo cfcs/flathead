@@ -206,7 +206,7 @@ let init () =
          TRAPSIG | 2
          LIT_ECHO (off) | 16
     *)
-      "\255\253\34\255\250\034\001\003\255\240" in
+      "\255\253\034\255\250\034\001\003\255\240" in
   state, Cstruct.concat [init; linemode]
 
 let encode cs =
